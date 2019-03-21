@@ -46,7 +46,8 @@ public class StudentDB implements StudentGroupQuery {
     public String getMinStudentFirstName(List<Student> list) {
         return list.stream()
                 .min(Comparator.comparingInt(Student::getId))
-                .map(Student::getFirstName).orElse("");
+                .map(Student::getFirstName)
+                .orElse("");
     }
 
     @Override
@@ -124,7 +125,8 @@ public class StudentDB implements StudentGroupQuery {
 
     private String getLargestGroup(Collection<Student> collection, ToIntFunction<Group> comparator) {
         return getGroupsByName(collection).stream()
-                .max(Comparator.comparingInt(comparator)
+                .max(Comparator
+                        .comparingInt(comparator)
                         .thenComparing(Group::getName, Collections.reverseOrder(String::compareTo)))
                 .map(Group::getName).orElse("");
     }

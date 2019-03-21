@@ -10,9 +10,10 @@ public class DescendingList<T> extends AbstractList<T> {
         this.data = data;
 
     }
+
     @Override
     public T get(int index) {
-        return data.get(size() -index - 1);
+        return data.get(size() - index - 1);
     }
 
     @Override

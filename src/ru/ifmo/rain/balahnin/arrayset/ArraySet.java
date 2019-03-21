@@ -13,7 +13,7 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
         this.data = new ArrayList<>(set);
     }
 
-    private ArraySet(List<T> data, Comparator<?super T>comparator) {
+    private ArraySet(List<T> data, Comparator<? super T> comparator) {
         this.data = data;
         this.comparator = comparator;
     }
@@ -26,7 +26,7 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
         this(Collections.emptyList(), comparator);
     }
 
-    public  ArraySet() {
+    public ArraySet() {
         this(Collections.emptyList(), null);
     }
 
@@ -82,8 +82,11 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
         }
         int fromIndex = getIndex(fromElement, fromInclusive, true);
         int toIndex = getIndex(toElement, toInclusive, false);
-
-        if (fromIndex == -1 || toIndex == - 1 || fromIndex > toIndex) {
+        if (comparator != null && comparator.compare(fromElement, toElement) > 0 ||
+                comparator == null && fromElement instanceof Comparable && ((Comparable<T>) fromElement).compareTo(toElement) > 0) {
+            return new ArraySet<>(comparator);
+        }
+        if (fromIndex == -1 || toIndex == -1 || fromIndex > toIndex) {
             return new ArraySet<>(comparator);
         }
         return new ArraySet<>(data.subList(fromIndex, toIndex + 1), comparator);
@@ -119,7 +122,8 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
 
     @Override
     public SortedSet<T> subSet(T fromElement, T toElement) {
-        if (comparator != null && comparator.compare(fromElement, toElement) > 0) {
+        if (comparator != null && comparator.compare(fromElement, toElement) > 0 ||
+                comparator == null && fromElement instanceof Comparable && ((Comparable<T>) fromElement).compareTo(toElement) > 0) {
             throw new IllegalArgumentException();
         }
         return subSet(fromElement, true, toElement, false);

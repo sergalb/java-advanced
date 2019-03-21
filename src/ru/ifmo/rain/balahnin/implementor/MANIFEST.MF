@@ -1,0 +1,3 @@
+Manifest-Version: 1.0
+Implementation-Vendor: Balahnin Sergey
+Main-Class: ru.ifmo.rain.balahnin.implementor.Implementor
