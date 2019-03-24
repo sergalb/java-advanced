@@ -71,8 +71,8 @@ public class IterativeParallelism implements ListIP {
      */
     @Override
     public <T> T maximum(int threads, List<? extends T> values, Comparator<? super T> comparator) throws InterruptedException {
-        List<T> matches = calc(threads, values, stream -> stream.max(comparator).orElse(null));
-        return matches.stream().max(comparator).orElse(null);
+        //todo null
+        return minimum(threads, values, comparator.reversed());
     }
 
     /**
@@ -104,8 +104,8 @@ public class IterativeParallelism implements ListIP {
      */
     @Override
     public <T> boolean all(int threads, List<? extends T> values, Predicate<? super T> predicate) throws InterruptedException {
-        List<Boolean> matches = calc(threads, values, stream -> stream.allMatch(predicate));
-        return matches.stream().allMatch(bool -> bool);
+        //todo null
+        return !any(threads, values, predicate.negate());
     }
 
     /**

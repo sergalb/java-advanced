@@ -44,6 +44,11 @@ public class Implementor implements JarImpler {
     private Class<?> token;
 
     /**
+     * Create Implementor, without token
+     */
+    public Implementor(){}
+
+    /**
      * depends on parameters run {@code implement} or {@code implementJar}
      * <p>
      * If arguments is {@code [realizable class] [path to save file] }
