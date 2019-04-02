@@ -1,17 +1,34 @@
 package ru.ifmo.rain.balahnin.concurrent;
 
 import info.kgeorgiy.java.advanced.concurrent.ListIP;
+import info.kgeorgiy.java.advanced.mapper.ParallelMapper;
+import ru.ifmo.rain.balahnin.mapper.ParallelMapperImpl;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * Concurrent apples own function
+ */
 public class IterativeParallelism implements ListIP {
+    private final ParallelMapper parallelMapper;
+
+    /**
+     * Default constructor doing nothing
+     */
+    public IterativeParallelism() {
+        parallelMapper = null;
+    }
+
+    public IterativeParallelism(ParallelMapper parallelMapper) {
+        this.parallelMapper = parallelMapper;
+    }
 
     /**
      * Join values to string.
@@ -23,7 +40,9 @@ public class IterativeParallelism implements ListIP {
      */
     @Override
     public String join(int threads, List<?> values) throws InterruptedException {
-        List<String> strings = calc(threads, values, stream -> stream.map(Object::toString).collect(Collectors.joining()));
+        List<String> strings = calc(threads, values,
+                stream -> stream.map(Object::toString).collect(Collectors.joining()),
+                reduceStream -> reduceStream.collect(Collectors.toList()));
         return String.join("", strings);
     }
 
@@ -39,8 +58,9 @@ public class IterativeParallelism implements ListIP {
 
     @Override
     public <T> List<T> filter(final int threads, final List<? extends T> values, final Predicate<? super T> predicate) throws InterruptedException {
-        List<Stream<? extends T>> filterFunc = calc(threads, values, stream -> stream.filter(predicate));
-        return filterFunc.stream().flatMap(s -> s).collect(Collectors.toList());
+        return calc(threads, values,
+                stream -> stream.filter(predicate),
+                reduceStream -> reduceStream.flatMap(s -> s).collect(Collectors.toList()));
     }
 
     /**
@@ -54,8 +74,9 @@ public class IterativeParallelism implements ListIP {
      */
     @Override
     public <T, U> List<U> map(final int threads, final List<? extends T> values, final Function<? super T, ? extends U> f) throws InterruptedException {
-        List<Stream<? extends U>> mapFunc = calc(threads, values, stream -> stream.map(f));
-        return mapFunc.stream().flatMap(s -> s).collect(Collectors.toList());
+        return calc(threads, values,
+                stream -> stream.map(f),
+                reduceStream -> reduceStream.flatMap(s -> s).collect(Collectors.toList()));
     }
 
     /**
@@ -71,7 +92,6 @@ public class IterativeParallelism implements ListIP {
      */
     @Override
     public <T> T maximum(int threads, List<? extends T> values, Comparator<? super T> comparator) throws InterruptedException {
-        //todo null
         return minimum(threads, values, comparator.reversed());
     }
 
@@ -88,8 +108,9 @@ public class IterativeParallelism implements ListIP {
      */
     @Override
     public <T> T minimum(int threads, List<? extends T> values, Comparator<? super T> comparator) throws InterruptedException {
-        List<T> matches = calc(threads, values, stream -> stream.min(comparator).orElse(null));
-        return matches.stream().min(comparator).orElse(null);
+        return calc(threads, values,
+                stream -> stream.min(comparator).orElse(null),
+                reduceStream -> reduceStream.min(comparator).orElse(null));
     }
 
     /**
@@ -104,7 +125,6 @@ public class IterativeParallelism implements ListIP {
      */
     @Override
     public <T> boolean all(int threads, List<? extends T> values, Predicate<? super T> predicate) throws InterruptedException {
-        //todo null
         return !any(threads, values, predicate.negate());
     }
 
@@ -120,14 +140,19 @@ public class IterativeParallelism implements ListIP {
      */
     @Override
     public <T> boolean any(int threads, List<? extends T> values, Predicate<? super T> predicate) throws InterruptedException {
-        List<Boolean> matches = calc(threads, values, stream -> stream.anyMatch(predicate));
-        return matches.stream().anyMatch(bool -> bool);
+        return calc(threads, values,
+                stream -> stream.anyMatch(predicate),
+                resultStream -> resultStream.anyMatch(bool -> bool));
     }
 
-    private <T, R> List<R> calc(int threads, List<? extends T> values,
-                                Function<Stream<? extends T>, ? extends R> function) throws InterruptedException {
+    private <T, R, U> U calc(int threads, List<? extends T> values,
+                             Function<Stream<? extends T>, ? extends R> function,
+                             Function<Stream<? extends R>, U> reduceFunction) throws InterruptedException {
         if (threads <= 0) {
             throw new IllegalArgumentException("threads count must be > 0, now" + threads);
+        }
+        if (values == null || values.isEmpty()) {
+            throw new NoSuchElementException("given list of values is empty (or null)");
         }
         if (values.size() < threads) {
             threads = values.size();
@@ -136,22 +161,21 @@ public class IterativeParallelism implements ListIP {
         int reminder = values.size() % threads;
         int curInd = 0;
 
-        ArrayList<Thread> threadPool = new ArrayList<>();
-        List<R> ans = new ArrayList<>(Collections.nCopies(threads, null));
-
+        List<Stream<? extends T>> streamList = new ArrayList<>();
         for (int i = 0; i < threads; ++i) {
-
             int hasReminder = (i < reminder) ? 1 : 0;
             List<? extends T> part = values.subList(curInd, curInd + lengthPart + hasReminder);
             curInd += lengthPart + hasReminder;
-
-            int finalI = i;
-            Thread worker = new Thread(() -> ans.set(finalI, function.apply(part.stream())));
-            threadPool.add(worker);
-            worker.start();
+            streamList.add(part.stream());
         }
-        for (Thread worker : threadPool) {
-            worker.join();
+
+        U ans;
+        if (parallelMapper == null) {
+            try (ParallelMapper workingMapper = new ParallelMapperImpl(threads)) {
+                ans = reduceFunction.apply(workingMapper.map(function, streamList).stream());
+            }
+        } else {
+            ans = reduceFunction.apply(parallelMapper.map(function, streamList).stream());
         }
         return ans;
     }
