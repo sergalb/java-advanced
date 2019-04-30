@@ -145,7 +145,8 @@ public class IterativeParallelism implements ListIP {
                 resultStream -> resultStream.anyMatch(bool -> bool));
     }
 
-    private <T, R, U> U calc(int threads, List<? extends T> values,
+    private <T, R, U> U calc(int threads,
+                             List<? extends T> values,
                              Function<Stream<? extends T>, ? extends R> function,
                              Function<Stream<? extends R>, U> reduceFunction) throws InterruptedException {
         if (threads <= 0) {

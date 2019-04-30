@@ -9,9 +9,9 @@ class ExecutedVector<T, R> {
     private final int identifier;
     private final List<? extends T> data;
     private final List<R> result;
+    private final Function<? super T, ? extends R> function;
     private int countCalculated;
     private int lastExecuted;
-    private final Function<? super T, ? extends R> function;
 
     ExecutedVector(List<? extends T> data, Function<? super T, ? extends R> function, int identifier) {
         this.data = data;
